@@ -456,7 +456,7 @@ async function dispatch(name, args) {
 // ---------------------------------------------------------------------------
 
 const PROTOCOL_VERSION = "2024-11-05";
-const SERVER_INFO = { name: "claude-code-companion", version: "0.1.3" };
+const SERVER_INFO = { name: "claude-code-companion", version: "0.1.4" };
 
 function rpcResult(id, result) {
   return { jsonrpc: "2.0", id, result };

@@ -65,6 +65,9 @@ export function buildArgs({
   if (m) args.push("--model", m);
   if (effort) args.push("--effort", effort);
   if (outputFormat) args.push("--output-format", outputFormat);
+  if (outputFormat === "stream-json" && !extraArgs.includes("--verbose") && !extraArgs.includes("-v")) {
+    args.push("--verbose");
+  }
   if (resume) args.push("--resume", resume);
   if (name) args.push("--name", name);
   if (systemPrompt) args.push("--system-prompt", systemPrompt);
