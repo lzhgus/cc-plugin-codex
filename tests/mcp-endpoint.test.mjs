@@ -47,6 +47,8 @@ test("initialize + tools/list returns 8 tools", async () => {
       "cc_setup", "cc_review", "cc_adversarial_review", "cc_rescue",
       "cc_transfer", "cc_status", "cc_result", "cc_cancel",
     ]);
+    const review = list.result.tools.find((t) => t.name === "cc_review");
+    assert.ok(review.inputSchema.properties.repo_path, "cc_review should accept explicit repo_path");
   } finally {
     mcp.kill();
     rmSync(dataDir, { recursive: true, force: true });
@@ -160,6 +162,29 @@ test("cc_review with changes returns the rendered review", async () => {
   } finally {
     mcp.kill();
     rmSync(dataDir, { recursive: true, force: true });
+    rmSync(repo, { recursive: true, force: true });
+    rmSync(fakeDir, { recursive: true, force: true });
+  }
+});
+
+test("cc_review uses explicit repo_path when MCP cwd is not the repo", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "cc-data-"));
+  const pluginCwd = mkdtempSync(join(tmpdir(), "cc-plugin-cwd-"));
+  const repo = makeRepo();
+  writeFileSync(join(repo, "a.txt"), "hello from explicit repo\n");
+  sh("git", ["add", "."], repo);
+  const { fakePath, dir: fakeDir } = makeFakeClaude({ result: "reviewed explicit repo", sessionId: "sess-explicit-repo" });
+  const mcp = spawnMcp(envWith(fakePath, dataDir), pluginCwd);
+  try {
+    const res = await rpc(mcp, 1, "tools/call", {
+      name: "cc_review",
+      arguments: { repo_path: repo },
+    });
+    assert.match(textOf(res), /reviewed explicit repo/);
+  } finally {
+    mcp.kill();
+    rmSync(dataDir, { recursive: true, force: true });
+    rmSync(pluginCwd, { recursive: true, force: true });
     rmSync(repo, { recursive: true, force: true });
     rmSync(fakeDir, { recursive: true, force: true });
   }

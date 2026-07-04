@@ -13,6 +13,22 @@ export function resolveRepo(cwd = process.cwd()) {
   }
 }
 
+export function resolveRepoFromArgs(args = {}, fallbackCwd = process.cwd()) {
+  const candidates = [
+    args?.repo_path,
+    args?.cwd,
+    process.env.CC_PLUGIN_REPO_PATH,
+    process.env.CC_PLUGIN_REPO_ROOT,
+    fallbackCwd,
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const repo = resolveRepo(candidate);
+    if (repo) return repo;
+  }
+  return null;
+}
+
 // Best-effort resolution of the current Codex session JSONL path. Codex stores
 // sessions under ~/.codex/sessions (and archived ones under archived_sessions).
 // We do not have a reliable runtime signal for "the current session id", so we

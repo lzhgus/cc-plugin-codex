@@ -99,6 +99,10 @@ codex mcp list
 
 `claude-code` MCP server と `cc_*` tools が表示されるはずです。
 
+Repo ツールが git repository を解決できないと表示した場合は、そのプロジェクトで新しい
+Codex thread を開いて `@cc` を呼び直してください。MCP server 自体はプラグインキャッシュ
+内で動作し、Codex が現在のプロジェクトパスを `repo_path` としてツールに渡します。
+
 ローカル開発用:
 
 ```bash

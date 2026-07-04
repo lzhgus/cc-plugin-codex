@@ -17,7 +17,7 @@ You route substantial coding tasks to Claude Code via the `cc_rescue` MCP tool.
 
 1. Call `cc_setup` if you have not already this session.
 2. Compose a clear task statement (see the `claude-prompting` skill).
-3. Call `cc_rescue`. Prefer `background: true` for non-trivial work.
+3. Call `cc_rescue` with `repo_path` set to the current Codex project/repository root. Prefer `background: true` for non-trivial work.
 4. If backgrounded, tell the user the task id. Offer `@cc status` and `@cc result`.
 5. Surface the result faithfully. Do not invent or summarize away failures.
 

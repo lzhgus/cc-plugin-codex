@@ -27,7 +27,7 @@ import * as claude from "./lib/claude.mjs";
 import { resolveDiff, hasChanges } from "./lib/git.mjs";
 import { reviewPrompt, adversarialReviewPrompt, rescuePrompt } from "./lib/prompts.mjs";
 import { renderResult, renderStreamLog, tailLog } from "./lib/render.mjs";
-import { resolveRepo, findCodexSession } from "./lib/workspace.mjs";
+import { resolveRepoFromArgs, findCodexSession } from "./lib/workspace.mjs";
 import { transferSummary } from "./lib/codex-session-transfer.mjs";
 import { readFileSync } from "node:fs";
 
@@ -144,6 +144,18 @@ const TOOLS = [
   },
 ];
 
+const REPO_PATH_PROPERTY = {
+  type: "string",
+  description:
+    "Absolute path to the current Codex project or git repository. Pass this when invoking the plugin from a Codex project; plugin MCP servers run from the plugin cache, not from the user's repo.",
+};
+
+for (const tool of TOOLS) {
+  if (["cc_review", "cc_adversarial_review", "cc_rescue", "cc_transfer", "cc_status", "cc_result", "cc_cancel"].includes(tool.name)) {
+    tool.inputSchema.properties.repo_path = REPO_PATH_PROPERTY;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Tool implementations
 // ---------------------------------------------------------------------------
@@ -156,9 +168,14 @@ function err(text) {
   return { content: [{ type: "text", text }], isError: true };
 }
 
-function repoOrError() {
-  const repo = resolveRepo();
-  if (!repo) return { error: "Not inside a git repository. cc tools that need a review target require a git repo." };
+function repoOrError(args) {
+  const repo = resolveRepoFromArgs(args);
+  if (!repo) {
+    return {
+      error:
+        "Could not resolve a git repository. Plugin MCP servers run from the plugin cache, so pass `repo_path` with the absolute path to the current Codex project/repo.",
+    };
+  }
   return { repo };
 }
 
@@ -209,8 +226,8 @@ async function toolSetup(args) {
   return ok(lines.join("\n"));
 }
 
-async function runReview({ kind, base, focus, background, wait }) {
-  const r = repoOrError();
+async function runReview({ kind, base, focus, background, wait, repo_path, cwd }) {
+  const r = repoOrError({ repo_path, cwd });
   if (r.error) return err(r.error);
   const diff = ensureReviewTarget(r.repo, base);
   if (diff.error) return err(diff.error);
@@ -232,11 +249,12 @@ async function runReview({ kind, base, focus, background, wait }) {
   return ok(renderResult(res.raw));
 }
 
-async function runRescue({ task, model, effort, background, wait, resume, fresh }) {
+async function runRescue({ task, model, effort, background, wait, resume, fresh, repo_path, cwd }) {
   if (!task) return err("`task` is required.");
   if (resume && fresh) return err("Choose either `resume` or `fresh`, not both.");
-  const r = repoOrError();
-  const repo = r.repo || process.cwd();
+  const r = repoOrError({ repo_path, cwd });
+  if (r.error) return err(r.error);
+  const repo = r.repo;
   const prompt = rescuePrompt({ task, repoRoot: repo, resume });
   const opts = { prompt, model, effort, cwd: repo, addDir: repo, resume: fresh ? undefined : resume };
   if (background) {
@@ -248,10 +266,11 @@ async function runRescue({ task, model, effort, background, wait, resume, fresh 
   return ok(renderResult(res.raw));
 }
 
-async function runTransfer({ source }) {
-  const r = repoOrError();
-  const repo = r.repo || process.cwd();
-  const session = findCodexSession({ source, cwd: process.cwd() });
+async function runTransfer({ source, repo_path, cwd }) {
+  const r = repoOrError({ repo_path, cwd });
+  if (r.error) return err(r.error);
+  const repo = r.repo;
+  const session = findCodexSession({ source, cwd: repo });
   if (!session) return err("Could not find a Codex session to transfer. Pass `source` with an explicit session JSONL path.");
   let summary;
   try { summary = transferSummary(session); }
@@ -279,8 +298,9 @@ async function runTransfer({ source }) {
   ].join("\n"));
 }
 
-async function runStatus({ task_id }) {
-  const r = repoOrError();
+async function runStatus({ task_id, repo_path, cwd }) {
+  const r = repoOrError({ repo_path, cwd });
+  if (r.error) return err(r.error);
   const jobs = refreshJobs(listJobsForRepo(r.repo));
   const filtered = task_id ? jobs.filter((j) => j.id === task_id) : jobs;
   if (!filtered.length) return ok(task_id ? `No job found with id ${task_id}.` : "No Claude Code jobs recorded for this repo yet.");
@@ -288,8 +308,9 @@ async function runStatus({ task_id }) {
   return ok(["Claude Code jobs:", ...lines].join("\n"));
 }
 
-async function runResult({ task_id }) {
-  const r = repoOrError();
+async function runResult({ task_id, repo_path, cwd }) {
+  const r = repoOrError({ repo_path, cwd });
+  if (r.error) return err(r.error);
   const jobs = refreshJobs(listJobsForRepo(r.repo));
   const job = task_id ? jobs.find((j) => j.id === task_id) : jobs[0];
   if (!job) return ok(task_id ? `No job found with id ${task_id}.` : "No Claude Code jobs recorded for this repo yet.");
@@ -327,8 +348,9 @@ function refreshJob(job) {
   return next;
 }
 
-async function runCancel({ task_id }) {
-  const r = repoOrError();
+async function runCancel({ task_id, repo_path, cwd }) {
+  const r = repoOrError({ repo_path, cwd });
+  if (r.error) return err(r.error);
   const jobs = listJobsForRepo(r.repo).filter((j) => j.status === "running");
   const job = task_id ? jobs.find((j) => j.id === task_id) : jobs[0];
   if (!job) return ok(task_id ? `No running job found with id ${task_id}.` : "No running Claude Code jobs for this repo.");
@@ -434,7 +456,7 @@ async function dispatch(name, args) {
 // ---------------------------------------------------------------------------
 
 const PROTOCOL_VERSION = "2024-11-05";
-const SERVER_INFO = { name: "claude-code-companion", version: "0.1.1" };
+const SERVER_INFO = { name: "claude-code-companion", version: "0.1.2" };
 
 function rpcResult(id, result) {
   return { jsonrpc: "2.0", id, result };

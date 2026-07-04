@@ -101,6 +101,10 @@ codex mcp list
 
 You should see the `claude-code` MCP server and the `cc_*` tools available to Codex.
 
+If a repo tool says it cannot resolve a git repository, start a new Codex thread in the project and
+invoke the plugin from there. The MCP server itself runs from the plugin cache; Codex passes the
+project path to the tool as `repo_path`.
+
 For local development from a checkout of this repo, use:
 
 ```bash

@@ -99,6 +99,10 @@ codex mcp list
 
 Deberías ver el MCP server `claude-code` y las herramientas `cc_*`.
 
+Si una herramienta de repo dice que no puede resolver un git repository, abre un thread nuevo de
+Codex dentro del proyecto y vuelve a invocar `@cc`. El MCP server se ejecuta desde la caché del
+plugin; Codex pasa la ruta del proyecto a la herramienta como `repo_path`.
+
 Para desarrollo local desde este repositorio:
 
 ```bash

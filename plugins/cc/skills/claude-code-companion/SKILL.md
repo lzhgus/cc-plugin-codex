@@ -15,19 +15,20 @@ The plugin uses the same `claude` install, login, and config the user already ha
 
 - `claude` is on PATH and logged in (OAuth or `ANTHROPIC_API_KEY`).
 - Run `cc_setup` once before any other tool. If it reports `claude installed: no` or `authenticated: no`, stop and tell the user how to fix it (`!curl -fsSL https://claude.ai/install.sh | bash` on macOS/Linux/WSL, `!irm https://claude.ai/install.ps1 | iex` on Windows PowerShell, and/or `!claude login`).
+- For tools that operate on a repository, pass `repo_path` with the absolute path to the current Codex project/repository. Plugin MCP servers run from the plugin cache, not from the user's repository, so `process.cwd()` is not enough.
 
 ## Tools
 
 | Tool | Use when |
 |---|---|
 | `cc_setup` | Readiness check. Always first. |
-| `cc_review` | Read-only review of current uncommitted changes or a branch vs `--base`. |
-| `cc_adversarial_review` | Read-only steerable review that challenges the design; accepts `focus`. |
-| `cc_rescue` | Delegate a task (bug, fix, investigation, follow-up) to Claude Code. Can mutate files. |
-| `cc_transfer` | Hand the current Codex session transcript to Claude Code; get a `claude --resume <id>` command. |
-| `cc_status` | List running/recent background jobs for this repo. |
-| `cc_result` | Read the stored output of a finished job + its Claude session id. |
-| `cc_cancel` | Kill a running background job. |
+| `cc_review` | Read-only review of current uncommitted changes or a branch vs `--base`. Pass `repo_path`. |
+| `cc_adversarial_review` | Read-only steerable review that challenges the design; accepts `focus`. Pass `repo_path`. |
+| `cc_rescue` | Delegate a task (bug, fix, investigation, follow-up) to Claude Code. Can mutate files. Pass `repo_path`. |
+| `cc_transfer` | Hand the current Codex session transcript to Claude Code; get a `claude --resume <id>` command. Pass `repo_path`. |
+| `cc_status` | List running/recent background jobs for this repo. Pass `repo_path`. |
+| `cc_result` | Read the stored output of a finished job + its Claude session id. Pass `repo_path`. |
+| `cc_cancel` | Kill a running background job. Pass `repo_path`. |
 
 ## When to use which
 
@@ -48,6 +49,8 @@ Call `cc_setup`. If it is not ready, tell the user exactly what to run and stop.
 ### Step 2: Pick the tool from the table above
 
 Do not call `cc_rescue` for something that is really a review — reviews are read-only. Do not call `cc_review` to make changes — it cannot.
+
+Always include `repo_path` for repo tools. Use the current Codex project/repository root, not the plugin cache path.
 
 ### Step 3: Long-running work goes to the background
 

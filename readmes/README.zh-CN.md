@@ -97,6 +97,9 @@ codex mcp list
 
 你应该能看到 `claude-code` MCP server，以及 `cc_*` tools。
 
+如果 repo 工具提示无法解析 git repository，请在项目里新开 Codex thread 后再调用 `@cc`。MCP
+server 本身运行在插件缓存目录，Codex 会通过 `repo_path` 把当前项目路径传给工具。
+
 本地开发时可以从 repo checkout 安装：
 
 ```bash

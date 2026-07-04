@@ -98,6 +98,10 @@ codex mcp list
 
 `claude-code` MCP server와 `cc_*` tools가 보여야 합니다.
 
+Repo 도구가 git repository를 찾을 수 없다고 하면, 해당 프로젝트에서 새 Codex thread를 열고
+`@cc`를 다시 호출하세요. MCP server 자체는 플러그인 캐시 디렉터리에서 실행되며, Codex가
+현재 프로젝트 경로를 `repo_path`로 도구에 전달합니다.
+
 로컬 개발용 설치:
 
 ```bash
