@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnMcp, makeFakeClaude, textOf } from "./helpers.mjs";
@@ -33,6 +33,19 @@ async function rpc(mcp, id, method, params) {
   return mcp.waitForResponse(id, 15000);
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function pollUntil(fn, predicate, { timeoutMs = 3000, intervalMs = 50 } = {}) {
+  const start = Date.now();
+  let last;
+  while (Date.now() - start < timeoutMs) {
+    last = await fn();
+    if (predicate(last)) return last;
+    await sleep(intervalMs);
+  }
+  return last;
+}
+
 test("initialize + tools/list returns 8 tools", async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "cc-data-"));
   const { fakePath, dir: fakeDir } = makeFakeClaude();
@@ -47,8 +60,10 @@ test("initialize + tools/list returns 8 tools", async () => {
       "cc_setup", "cc_review", "cc_adversarial_review", "cc_rescue",
       "cc_transfer", "cc_status", "cc_result", "cc_cancel",
     ]);
-    const review = list.result.tools.find((t) => t.name === "cc_review");
-    assert.ok(review.inputSchema.properties.repo_path, "cc_review should accept explicit repo_path");
+    for (const name of names.filter((toolName) => toolName !== "cc_setup")) {
+      const tool = list.result.tools.find((t) => t.name === name);
+      assert.ok(tool.inputSchema.properties.repo_path, `${name} should accept explicit repo_path`);
+    }
   } finally {
     mcp.kill();
     rmSync(dataDir, { recursive: true, force: true });
@@ -190,6 +205,75 @@ test("cc_review uses explicit repo_path when MCP cwd is not the repo", async () 
   }
 });
 
+test("repo tools use explicit repo_path for rescue/status/result/cancel when MCP cwd is not the repo", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "cc-data-"));
+  const pluginCwd = mkdtempSync(join(tmpdir(), "cc-plugin-cwd-"));
+  const repo = makeRepo();
+  const streamEvents = [
+    { type: "assistant_message", message: { role: "assistant", content: [{ type: "text", text: "working from explicit repo" }] } },
+  ];
+  const { fakePath, dir: fakeDir } = makeFakeClaude({ streamEvents, hang: true });
+  const mcp = spawnMcp(envWith(fakePath, dataDir), pluginCwd);
+  try {
+    const start = await rpc(mcp, 1, "tools/call", {
+      name: "cc_rescue",
+      arguments: { task: "investigate from explicit repo", background: true, repo_path: repo },
+    });
+    const taskId = textOf(start).match(/task id: (cc-[^\s]+)/)[1];
+
+    const status = await rpc(mcp, 2, "tools/call", {
+      name: "cc_status",
+      arguments: { repo_path: repo },
+    });
+    assert.match(textOf(status), new RegExp(taskId));
+
+    let pollId = 3;
+    const result = await pollUntil(
+      () => rpc(mcp, pollId++, "tools/call", {
+        name: "cc_result",
+        arguments: { task_id: taskId, repo_path: repo },
+      }),
+      (res) => /working from explicit repo/.test(textOf(res)),
+    );
+    assert.match(textOf(result), /working from explicit repo/);
+
+    const cancel = await rpc(mcp, pollId++, "tools/call", {
+      name: "cc_cancel",
+      arguments: { task_id: taskId, repo_path: repo },
+    });
+    assert.match(textOf(cancel), /Cancelled/);
+  } finally {
+    mcp.kill();
+    rmSync(dataDir, { recursive: true, force: true });
+    rmSync(pluginCwd, { recursive: true, force: true });
+    rmSync(repo, { recursive: true, force: true });
+    rmSync(fakeDir, { recursive: true, force: true });
+  }
+});
+
+test("cc_transfer uses explicit repo_path when MCP cwd is not the repo", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "cc-data-"));
+  const pluginCwd = mkdtempSync(join(tmpdir(), "cc-plugin-cwd-"));
+  const repo = makeRepo();
+  const source = join(dataDir, "codex-session.jsonl");
+  writeFileSync(source, JSON.stringify({ role: "user", content: `continue work in ${repo}` }) + "\n");
+  const { fakePath, dir: fakeDir } = makeFakeClaude({ result: "transferred", sessionId: "sess-transfer-1" });
+  const mcp = spawnMcp(envWith(fakePath, dataDir), pluginCwd);
+  try {
+    const res = await rpc(mcp, 1, "tools/call", {
+      name: "cc_transfer",
+      arguments: { source, repo_path: repo },
+    });
+    assert.match(textOf(res), /claude --resume sess-transfer-1/);
+  } finally {
+    mcp.kill();
+    rmSync(dataDir, { recursive: true, force: true });
+    rmSync(pluginCwd, { recursive: true, force: true });
+    rmSync(repo, { recursive: true, force: true });
+    rmSync(fakeDir, { recursive: true, force: true });
+  }
+});
+
 test("cc_rescue background spawns a detached job and cc_cancel stops it", async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "cc-data-"));
   const repo = makeRepo();
@@ -239,13 +323,15 @@ test("cc_rescue background marks completed jobs from stream-json result", async 
     });
     const taskId = textOf(start).match(/task id: (cc-[^\s]+)/)[1];
 
-    await new Promise((r) => setTimeout(r, 300));
-
-    const status = await rpc(mcp, 2, "tools/call", { name: "cc_status", arguments: { task_id: taskId } });
+    let pollId = 2;
+    const status = await pollUntil(
+      () => rpc(mcp, pollId++, "tools/call", { name: "cc_status", arguments: { task_id: taskId } }),
+      (res) => /\[completed\]/.test(textOf(res)),
+    );
     assert.match(textOf(status), /\[completed\]/);
     assert.match(textOf(status), /sid=sess-bg-1/);
 
-    const result = await rpc(mcp, 3, "tools/call", { name: "cc_result", arguments: { task_id: taskId } });
+    const result = await rpc(mcp, pollId++, "tools/call", { name: "cc_result", arguments: { task_id: taskId } });
     assert.match(textOf(result), /Job .* — rescue — completed/);
     assert.match(textOf(result), /background done/);
     assert.match(textOf(result), /Resume in Claude Code:  claude --resume sess-bg-1/);

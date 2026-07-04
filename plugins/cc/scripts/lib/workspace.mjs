@@ -1,7 +1,8 @@
 // Workspace + Codex-session resolution helpers.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { homedir } from "node:os";
+import { PLUGIN_ROOT } from "./fs.mjs";
 import { isRepo, repoRoot } from "./git.mjs";
 
 export function resolveRepo(cwd = process.cwd()) {
@@ -14,19 +15,26 @@ export function resolveRepo(cwd = process.cwd()) {
 }
 
 export function resolveRepoFromArgs(args = {}, fallbackCwd = process.cwd()) {
-  const candidates = [
+  const explicitCandidates = [
     args?.repo_path,
     args?.cwd,
     process.env.CC_PLUGIN_REPO_PATH,
     process.env.CC_PLUGIN_REPO_ROOT,
-    fallbackCwd,
   ].filter(Boolean);
 
-  for (const candidate of candidates) {
+  for (const candidate of explicitCandidates) {
     const repo = resolveRepo(candidate);
     if (repo) return repo;
   }
+  if (!isInsidePath(PLUGIN_ROOT, fallbackCwd)) {
+    return resolveRepo(fallbackCwd);
+  }
   return null;
+}
+
+function isInsidePath(parent, child) {
+  const rel = relative(resolve(parent), resolve(child));
+  return rel === "" || (!!rel && !rel.startsWith("..") && !isAbsolute(rel));
 }
 
 // Best-effort resolution of the current Codex session JSONL path. Codex stores
@@ -34,13 +42,13 @@ export function resolveRepoFromArgs(args = {}, fallbackCwd = process.cwd()) {
 // We do not have a reliable runtime signal for "the current session id", so we
 // pick the most recently modified .jsonl under those dirs whose content
 // references the current cwd/repo, falling back to the most recent overall.
-export function findCodexSession({ source, cwd } = {}) {
+export function findCodexSession({ source, cwd, sessionDirs } = {}) {
   if (source) {
     if (!existsSync(source)) throw new Error(`--source not found: ${source}`);
     return source;
   }
   const home = homedir();
-  const dirs = [
+  const dirs = sessionDirs || [
     join(home, ".codex", "sessions"),
     join(home, ".codex", "archived_sessions"),
   ];
@@ -48,9 +56,7 @@ export function findCodexSession({ source, cwd } = {}) {
   const candidates = [];
   for (const dir of dirs) {
     if (!existsSync(dir)) continue;
-    for (const entry of readdirSync(dir)) {
-      if (!entry.endsWith(".jsonl")) continue;
-      const full = join(dir, entry);
+    for (const full of findJsonlFiles(dir)) {
       try {
         const st = statSync(full);
         candidates.push({ full, mtime: st.mtimeMs });
@@ -67,6 +73,20 @@ export function findCodexSession({ source, cwd } = {}) {
     }
   }
   return candidates[0].full;
+}
+
+function findJsonlFiles(dir, depth = 4) {
+  if (depth < 0) return [];
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...findJsonlFiles(full, depth - 1));
+    } else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+      out.push(full);
+    }
+  }
+  return out;
 }
 
 function sessionReferencesPath(file, needle) {
