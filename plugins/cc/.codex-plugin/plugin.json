@@ -1,0 +1,41 @@
+{
+  "name": "cc",
+  "version": "0.1.0",
+  "description": "Use Claude Code from Codex to review code or delegate tasks.\n\nAliases: @cc, @claude, @claude-code, Claude Code, claude code.\n\nUse Claude Code when the user asks to delegate a task to Claude, get a Claude Code code review, or continue work in Claude Code. The plugin wraps the local `claude` CLI in headless mode and exposes review/rescue/transfer/status/result/cancel tools.",
+  "author": {
+    "name": "lzhgus",
+    "url": "https://github.com/lzhgus"
+  },
+  "homepage": "https://github.com/lzhgus/cc-plugin-codex",
+  "license": "Apache-2.0",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "anthropic",
+    "review",
+    "delegate",
+    "rescue"
+  ],
+  "mcpServers": "./.mcp.json",
+  "skills": "./skills/",
+  "commands": "./commands/",
+  "interface": {
+    "displayName": "Claude Code Companion",
+    "shortDescription": "Use Claude Code from Codex for reviews and delegation",
+    "longDescription": "Claude Code Companion lets Codex delegate tasks to Claude Code, run Claude Code code reviews, and hand off sessions. It wraps the locally installed `claude` CLI in headless mode so Codex can call Claude Code as a tool.",
+    "developerName": "lzhgus",
+    "category": "Engineering",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/lzhgus/cc-plugin-codex",
+    "defaultPrompt": [
+      "Ask Claude Code to review my uncommitted changes",
+      "Delegate this bug investigation to Claude Code"
+    ],
+    "brandColor": "#D97757",
+    "logo": "./assets/app-icon.svg",
+    "screenshots": []
+  }
+}
