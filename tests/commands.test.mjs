@@ -6,16 +6,14 @@ import { fileURLToPath } from "node:url";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const PLUGIN = join(HERE, "..", "plugins", "cc");
-
-const EXPECTED_COMMANDS = [
-  "setup.md",
-  "review.md",
-  "adversarial-review.md",
-  "rescue.md",
-  "transfer.md",
-  "status.md",
-  "result.md",
-  "cancel.md",
+const ROOT = join(HERE, "..");
+const PUBLIC_DOCS = [
+  "README.md",
+  "readmes/README.zh-CN.md",
+  "readmes/README.ko.md",
+  "readmes/README.ja.md",
+  "readmes/README.es.md",
+  "readmes/README.pt.md",
 ];
 
 function parseFrontmatter(text) {
@@ -32,23 +30,6 @@ function parseFrontmatter(text) {
   return fm;
 }
 
-test("all expected command files exist with description frontmatter", () => {
-  for (const name of EXPECTED_COMMANDS) {
-    const file = join(PLUGIN, "commands", name);
-    assert.ok(existsSync(file), `missing command file: ${name}`);
-    const fm = parseFrontmatter(readFileSync(file, "utf8"));
-    assert.ok(fm, `no frontmatter in ${name}`);
-    assert.ok(fm.description && fm.description.length > 0, `no description in ${name}`);
-  }
-});
-
-test("commands reference the cc_* MCP tools", () => {
-  for (const name of EXPECTED_COMMANDS) {
-    const text = readFileSync(join(PLUGIN, "commands", name), "utf8");
-    assert.match(text, /cc_/, `${name} does not mention a cc_ tool`);
-  }
-});
-
 test("skills have name + description frontmatter", () => {
   const skillsDir = join(PLUGIN, "skills");
   const skills = readdirSync(skillsDir).filter((d) => existsSync(join(skillsDir, d, "SKILL.md")));
@@ -60,13 +41,21 @@ test("skills have name + description frontmatter", () => {
   }
 });
 
-test("plugin.json is valid JSON with mcpServers + skills + commands", () => {
+test("plugin.json is valid JSON with mcpServers + skills", () => {
   const pj = JSON.parse(readFileSync(join(PLUGIN, ".codex-plugin", "plugin.json"), "utf8"));
   assert.equal(pj.name, "cc");
   assert.equal(pj.mcpServers, "./.mcp.json");
   assert.equal(pj.skills, "./skills/");
-  assert.equal(pj.commands, "./commands/");
+  assert.equal(pj.commands, undefined);
   assert.ok(pj.interface?.displayName);
+});
+
+test("public docs invoke the plugin through @cc instead of /cc:* commands", () => {
+  for (const doc of PUBLIC_DOCS) {
+    const text = readFileSync(join(ROOT, doc), "utf8");
+    assert.doesNotMatch(text, /\/cc:/, `${doc} still documents unsupported /cc:* commands`);
+    assert.match(text, /@cc/, `${doc} should show @cc invocation`);
+  }
 });
 
 test(".mcp.json declares the claude-code stdio server", () => {

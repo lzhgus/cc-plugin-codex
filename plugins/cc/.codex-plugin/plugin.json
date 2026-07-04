@@ -1,6 +1,6 @@
 {
   "name": "cc",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Use Claude Code from Codex to review code or delegate tasks.\n\nAliases: @cc, @claude, @claude-code, Claude Code, claude code.\n\nUse Claude Code when the user asks to delegate a task to Claude, get a Claude Code code review, or continue work in Claude Code. The plugin wraps the local `claude` CLI in headless mode and exposes review/rescue/transfer/status/result/cancel tools.",
   "author": {
     "name": "lzhgus",
@@ -18,7 +18,6 @@
   ],
   "mcpServers": "./.mcp.json",
   "skills": "./skills/",
-  "commands": "./commands/",
   "interface": {
     "displayName": "Claude Code Companion",
     "shortDescription": "Use Claude Code from Codex for reviews and delegation",

@@ -1,32 +1,42 @@
-# Codex 的 Claude Code Companion
+# Claude Code Companion for Codex
 
 [English](../README.md) | [简体中文](README.zh-CN.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [Español](README.es.md) | [Português](README.pt.md)
 
-在 Codex 里调用 Claude Code：让 Claude Code 做代码审查、执行委托任务，或把当前工作转交到 Claude Code 继续。
+在 Codex 里使用 Claude Code：做 code review，或者把任务委托给 Claude Code。
 
-这是一个非官方 companion plugin。它不会捆绑 Claude Code，只会调用你本机已经安装并登录的 `claude` CLI。
+这是一个非官方 companion plugin。它不内置 Claude Code，而是调用你本机已经安装并登录的
+`claude` CLI。
 
-## 你会得到什么
+## 重要说明
 
-- `/cc:setup`：检查 Claude Code 是否已安装并登录。
-- `/cc:review`：对当前改动做只读 Claude Code review。
-- `/cc:adversarial-review`：做更有挑战性的设计/风险 review。
-- `/cc:rescue`、`/cc:transfer`、`/cc:status`、`/cc:result`、`/cc:cancel`：委托任务、转交会话、管理后台任务。
+Codex plugin 通过 `@cc`、自然语言，或者插件选择器调用。这个插件不会在 Codex 输入框里新增
+插件专属的 slash command。如果你输入旧式 slash 命令时看到 "No commands"，不代表安装失败。
+安装后请新开一个 Codex thread，然后用 `@cc`。
 
-插件也暴露同名 MCP 工具：`cc_setup`、`cc_review`、`cc_adversarial_review`、`cc_rescue`、`cc_transfer`、`cc_status`、`cc_result`、`cc_cancel`。
+## 功能
 
-## 前置要求
+- `@cc check setup`：检查 Claude Code 是否已安装并登录。
+- `@cc review my uncommitted changes`：对当前未提交改动做只读 review。
+- `@cc challenge this implementation against main`：做更有挑战性的设计和风险 review。
+- `@cc investigate why tests are failing in the background`：把任务委托给 Claude Code。
+- `@cc status`、`@cc result`、`@cc cancel`：查看、读取或取消后台任务。
+- `@cc transfer this Codex session to Claude Code`：生成 Claude Code resume 命令。
 
-- Claude Code 订阅（Pro/Max 等）或 Anthropic API key。
-- Node.js 18.18 或更新版本。
+底层 MCP 工具包括：`cc_setup`、`cc_review`、`cc_adversarial_review`、`cc_rescue`、
+`cc_transfer`、`cc_status`、`cc_result`、`cc_cancel`。
+
+## 要求
+
+- Claude Code Pro/Max 订阅，或 Anthropic API key。
+- Node.js 18.18 或更高版本。
 - 支持 plugin 的 Codex CLI。
-- 已安装并登录的 Claude Code CLI，也就是终端里可以运行 `claude`。
+- 已安装并登录的 Claude Code CLI，也就是 `claude`。
 
 ## 安装
 
 ### 1. 安装 Claude Code
 
-本插件依赖本机 `claude` CLI。根据 Claude Code 官方 quickstart，推荐使用 native install：
+官方 quickstart 推荐原生安装：
 
 ```bash
 curl -fsSL https://claude.ai/install.sh | bash
@@ -44,22 +54,22 @@ Windows CMD：
 curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd
 ```
 
-也可以使用包管理器：
+也可以用包管理器：
 
 ```bash
 brew install --cask claude-code
 winget install Anthropic.ClaudeCode
 ```
 
-安装后登录：
+然后登录：
 
 ```bash
 claude
 ```
 
-按照浏览器里的登录提示完成登录。之后也可以在 Claude Code 会话里用 `/login` 重新登录。
+按浏览器提示完成登录。也可以在 Claude Code 里用 `/login` 重新登录。
 
-### 2. 安装 Codex 插件
+### 2. 安装这个 Codex plugin
 
 添加 marketplace：
 
@@ -73,15 +83,21 @@ codex plugin marketplace add lzhgus/cc-plugin-codex
 codex plugin add cc@cc-plugin-codex
 ```
 
-然后在 Codex 中运行：
+安装后新开一个 Codex thread，然后输入：
 
 ```text
-/cc:setup
+@cc check whether Claude Code is installed and authenticated
 ```
 
-安装成功后，`codex mcp list` 应该能看到 `claude-code` MCP server，Codex 里也应该能使用 `cc_*` 工具。
+也可以在 shell 里确认 MCP server：
 
-本地开发安装：
+```bash
+codex mcp list
+```
+
+你应该能看到 `claude-code` MCP server，以及 `cc_*` tools。
+
+本地开发时可以从 repo checkout 安装：
 
 ```bash
 codex plugin marketplace add .
@@ -90,45 +106,48 @@ codex plugin add cc@cc-plugin-codex
 
 ## Claude Code CI/CD
 
-本插件只需要本机 Claude Code CLI。不过 Claude Code 官方也提供 CI/CD 集成。GitHub Actions 的快速设置方式是在 Claude Code 终端里运行：
+这个插件只需要本地 Claude Code CLI。不过 Claude Code 也有官方 CI/CD 集成。GitHub Actions
+场景下，打开 Claude Code 后运行：
 
 ```text
 /install-github-app
 ```
 
-官方流程会安装 Claude GitHub App，并引导仓库管理员添加 GitHub Actions workflow 和 API key secret。
-
-参考：
+官方流程会安装 Claude GitHub App，并引导 repo admin 添加 GitHub Actions workflow 和 API key
+secret。参考：
 
 - https://code.claude.com/docs/en/quickstart
 - https://code.claude.com/docs/en/github-actions
 
-## 常用方式
+## 使用
 
-```bash
-/cc:review
-/cc:review --background
-/cc:adversarial-review --base main 重点看缓存和重试设计有没有问题
-/cc:rescue investigate why the tests started failing
-/cc:status
-/cc:result
+```text
+@cc check setup
+@cc review my uncommitted changes
+@cc review my branch against main
+@cc challenge whether this caching and retry design is safe
+@cc investigate why the tests started failing
+@cc run a background rescue for the CI regression
+@cc status
+@cc result
+@cc cancel the latest running job
+@cc transfer this Codex session to Claude Code
 ```
 
-## 工作原理
+Review 工具是只读的，不会修改文件。Rescue 任务会委托给 Claude Code，因此可以修改文件。
+后台任务会返回 task id；用 `@cc status` 和 `@cc result` 查看进度和结果。
 
-插件通过本地 `claude` CLI 的 headless 模式运行 Claude Code，例如 `claude -p ...`。因此它使用同一台机器上的同一份 Claude Code 安装、登录状态、配置和代码仓库。
-
-## 开发验证
+## 开发
 
 ```bash
-npm test
-npm run check
+node --check plugins/cc/scripts/claude-companion.mjs
 node plugins/cc/scripts/claude-companion.mjs --tools
 node plugins/cc/scripts/claude-companion.mjs --selftest
+npm test
 ```
 
-测试使用 fake Claude fixture，不会调用真实 Claude Code。
+测试使用 `fake-claude` fixture，不会调用真实的 `claude`。
 
 ## License
 
-Apache-2.0。详见 [LICENSE](../LICENSE)。
+Apache-2.0。见 [LICENSE](../LICENSE)。

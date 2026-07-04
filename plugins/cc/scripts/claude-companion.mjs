@@ -201,7 +201,7 @@ async function toolSetup(args) {
     lines.push("");
     lines.push("Install Claude Code:  curl -fsSL https://claude.ai/install.sh | bash");
     lines.push("Windows PowerShell:   irm https://claude.ai/install.ps1 | iex");
-    lines.push("Then run /cc:setup again.");
+    lines.push("Then start a new Codex thread and ask:  @cc check setup");
   } else if (authed !== true && authed !== null) {
     lines.push("");
     lines.push("Sign in with:  !claude login   (or set ANTHROPIC_API_KEY)");
@@ -434,7 +434,7 @@ async function dispatch(name, args) {
 // ---------------------------------------------------------------------------
 
 const PROTOCOL_VERSION = "2024-11-05";
-const SERVER_INFO = { name: "claude-code-companion", version: "0.1.0" };
+const SERVER_INFO = { name: "claude-code-companion", version: "0.1.1" };
 
 function rpcResult(id, result) {
   return { jsonrpc: "2.0", id, result };

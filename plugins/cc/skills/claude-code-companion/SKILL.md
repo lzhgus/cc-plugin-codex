@@ -51,7 +51,7 @@ Do not call `cc_rescue` for something that is really a review — reviews are re
 
 ### Step 3: Long-running work goes to the background
 
-For `cc_review` and `cc_rescue`, prefer `background: true` when the diff is non-trivial or the task may take more than a few seconds. Tell the user the task id, then offer to check `/cc:status` and `/cc:result`.
+For `cc_review` and `cc_rescue`, prefer `background: true` when the diff is non-trivial or the task may take more than a few seconds. Tell the user the task id, then offer to check progress through `@cc status` and `@cc result`.
 
 ### Step 4: Report faithfully
 

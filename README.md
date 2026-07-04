@@ -4,29 +4,34 @@
 
 Use Claude Code from inside Codex for code reviews or to delegate tasks to Claude Code.
 
-This plugin is for Codex users who want an easy way to start using Claude Code from the workflow
-they already have.
+This is an unofficial companion plugin. It does not bundle Claude Code; it wraps your local
+`claude` CLI and uses your existing Claude Code authentication.
 
-This is an unofficial companion plugin. It does not bundle Claude Code; it uses the local `claude`
-CLI and your existing Claude Code authentication.
+## Important Invocation Note
+
+Codex plugins are invoked through `@cc`, natural language, or the plugin picker. This plugin does
+not add plugin-specific slash commands to the Codex composer. If typing an old slash-style command
+shows "No commands", the install may still be fine. Start a new thread after installing and ask
+Codex to use `@cc`.
 
 ## What You Get
 
-- `/cc:setup` checks that Claude Code is installed and authenticated
-- `/cc:review` for a read-only Claude Code review
-- `/cc:adversarial-review` for a steerable challenge review
-- `/cc:rescue`, `/cc:transfer`, `/cc:status`, `/cc:result`, and `/cc:cancel` to delegate work, hand off
-  sessions, and manage background jobs
+- `@cc check setup` checks whether Claude Code is installed and authenticated.
+- `@cc review my uncommitted changes` runs a read-only Claude Code review.
+- `@cc challenge this implementation against main` runs a steerable adversarial review.
+- `@cc investigate why tests are failing in the background` delegates work to Claude Code.
+- `@cc status`, `@cc result`, and `@cc cancel` manage background jobs.
+- `@cc transfer this Codex session to Claude Code` creates a Claude Code resume command.
 
-The plugin exposes the same tools as the `claude-code` MCP server (`cc_setup`, `cc_review`,
-`cc_adversarial_review`, `cc_rescue`, `cc_transfer`, `cc_status`, `cc_result`, `cc_cancel`).
+The plugin exposes the `claude-code` MCP tools: `cc_setup`, `cc_review`,
+`cc_adversarial_review`, `cc_rescue`, `cc_transfer`, `cc_status`, `cc_result`, and `cc_cancel`.
 
 ## Requirements
 
-- **Claude Code subscription (Pro/Max) or Anthropic API key.** Usage contributes to your Claude Code
-  usage limits.
+- **Claude Code subscription (Pro/Max) or Anthropic API key.** Usage contributes to your Claude
+  Code usage limits.
 - **Node.js 18.18 or later**
-- **Codex CLI** with plugin support (`codex plugin …`)
+- **Codex CLI** with plugin support (`codex plugin ...`)
 - **Claude Code CLI** installed and authenticated as `claude`
 
 ## Install
@@ -65,7 +70,8 @@ Then log in:
 claude
 ```
 
-Follow the browser login prompt. You can also re-authenticate from inside Claude Code with `/login`.
+Follow the browser login prompt. You can also re-authenticate from inside Claude Code with
+`/login`.
 
 ### 2. Install this Codex plugin
 
@@ -81,23 +87,19 @@ Install the plugin:
 codex plugin add cc@cc-plugin-codex
 ```
 
-Then run:
+After installing, start a new Codex thread and ask:
 
+```text
+@cc check whether Claude Code is installed and authenticated
 ```
-/cc:setup
-```
 
-`/cc:setup` tells you whether Claude Code is ready. If `claude` is missing and npm is available,
-it can offer to install it for you.
-
-If Claude Code is installed but not logged in yet:
+You can also verify the MCP server from a shell:
 
 ```bash
-!claude login
+codex mcp list
 ```
 
-After install you should see the `claude-code` MCP server under `codex mcp list` and the `cc_*`
-tools available to Codex.
+You should see the `claude-code` MCP server and the `cc_*` tools available to Codex.
 
 For local development from a checkout of this repo, use:
 
@@ -123,153 +125,80 @@ Actions workflows and an API key secret. See:
 
 ## Usage
 
-### `/cc:setup`
+### Setup
 
-Checks whether Claude Code is installed and authenticated.
-
-```bash
-/cc:setup
-/cc:setup --enable-review-gate
-/cc:setup --disable-review-gate
+```text
+@cc check setup
+@cc check setup and enable the advisory review gate
+@cc check setup and disable the advisory review gate
 ```
 
-> Note: in Codex the review gate is advisory. A future revision may add a stop-time hook if Codex
-> exposes one.
+Setup reports whether `claude` is installed, the detected version, auth status, and the advisory
+review gate setting.
 
-### `/cc:review`
+### Review
 
-Runs a read-only Claude Code review on your current work. It gives the same quality of code review
-as running `/review` inside Claude Code directly.
-
-> [!NOTE]
-> Code review — especially multi-file — can take a while. Run it in the background.
-
-Use it when you want:
-
-- a review of your current uncommitted changes
-- a review of your branch compared to a base branch like `main`
-
-Use `--base <ref>` for branch review. Supports `--wait` and `--background`. It is not steerable and
-does not take custom focus text. Use `/cc:adversarial-review` to challenge a specific decision.
-
-```bash
-/cc:review
-/cc:review --base main
-/cc:review --background
+```text
+@cc review my uncommitted changes
+@cc review my branch against main
+@cc review my changes in the background
 ```
 
-Read-only: Claude Code cannot modify files. When backgrounded, check with `/cc:status` and cancel
-with `/cc:cancel`.
+Reviews are read-only. Claude Code cannot modify files through the review tools.
 
-### `/cc:adversarial-review`
+### Adversarial Review
 
-Runs a **steerable** review that questions the chosen implementation and design. Use it to
-pressure-test assumptions, tradeoffs, failure modes, and alternative approaches.
-
-Same target selection as `/cc:review` (incl. `--base <ref>`), plus `--wait` and `--background`.
-Unlike `/cc:review`, it takes free-text focus after the flags.
-
-```bash
-/cc:adversarial-review
-/cc:adversarial-review --base main challenge whether this was the right caching and retry design
-/cc:adversarial-review --background look for race conditions and question the chosen approach
+```text
+@cc challenge whether this caching and retry design is safe
+@cc run an adversarial review against main focused on race conditions
 ```
 
-Read-only. It does not fix code.
+Use this when you want Claude Code to pressure-test assumptions, tradeoffs, failure modes, and
+alternative approaches.
 
-### `/cc:rescue`
+### Rescue
 
-Hands a task to Claude Code through the `cc_rescue` tool. Use it when you want Claude Code to
-investigate a bug, try a fix, continue a previous Claude Code task, or take a faster/cheaper pass
-with a smaller model.
-
-Supports `--background`, `--wait`, `--resume`, `--fresh`, `--model`, and `--effort`.
-
-```bash
-/cc:rescue investigate why the tests started failing
-/cc:rescue fix the failing test with the smallest safe patch
-/cc:rescue --resume <session-id> apply the top fix from the last run
-/cc:rescue --model haiku --effort medium investigate the flaky integration test
-/cc:rescue --background investigate the regression
+```text
+@cc investigate why the tests started failing
+@cc fix the failing test with the smallest safe patch
+@cc continue the previous Claude Code session and apply the top fix
+@cc run a background rescue for the CI regression
 ```
 
-You can also just ask naturally: "Ask Claude Code to redesign the database connection to be more
-resilient."
+Rescue tasks can edit files because they delegate the work to Claude Code.
 
-Notes:
+### Status, Result, Cancel
 
-- if you omit `--model`/`--effort`, Claude Code chooses its own defaults.
-- `--model` accepts aliases: `fable`, `opus`, `sonnet`, `haiku`.
-- to continue the latest rescue thread for this repo, run `/cc:status` to get a session id, then
-  use `--resume <id>`.
-
-### `/cc:transfer`
-
-Creates a Claude Code session seeded with the current Codex session transcript and prints a
-`claude --resume <session-id>` command.
-
-```bash
-/cc:transfer
-/cc:transfer --source ~/.codex/sessions/<session-id>.jsonl
+```text
+@cc status
+@cc result
+@cc cancel the latest running job
+@cc result for task <task-id>
 ```
 
-Transfer is **best-effort**: Codex and Claude Code use different session formats, so the Codex
+Background tasks produce a task id. Use status/result to monitor them and to get the Claude Code
+session id for direct resume.
+
+### Transfer
+
+```text
+@cc transfer this Codex session to Claude Code
+```
+
+Transfer is best-effort: Codex and Claude Code use different session formats, so the Codex
 transcript is summarized into a seed prompt rather than losslessly imported.
 
-### `/cc:status`, `/cc:result`, `/cc:cancel`
+## Claude Code Integration
 
-```bash
-/cc:status          # running + recent jobs
-/cc:status <id>
-/cc:result          # final output of latest job (+ claude --resume <id>)
-/cc:result <id>
-/cc:cancel          # cancel latest running job
-/cc:cancel <id>
-```
-
-## Typical Flows
-
-### Review before shipping
-
-```bash
-/cc:review
-```
-
-### Hand a problem to Claude Code
-
-```bash
-/cc:rescue investigate why the build is failing in CI
-```
-
-### Start something long-running
-
-```bash
-/cc:adversarial-review --background
-/cc:rescue --background investigate the flaky test
-```
-
-Then check in with:
-
-```bash
-/cc:status
-/cc:result
-```
-
-## Claude Code integration
-
-The plugin wraps the locally installed `claude` CLI in headless mode (`claude -p …`). It uses the
+The plugin wraps the locally installed `claude` CLI in headless mode (`claude -p ...`). It uses the
 global `claude` binary and your existing Claude Code login and config.
 
-### Common configurations
-
-To change the default model/effort used by the plugin, configure Claude Code via its own settings
-or pass `--model` / `--effort` to `/cc:rescue`. The plugin honors your `~/.claude` config and
+To change the default model/effort used by delegated tasks, configure Claude Code via its own
+settings or ask `@cc` for a specific model/effort. The plugin honors your `~/.claude` config and
 `CLAUDE_*` environment variables.
 
-### Moving the work over to Claude Code
-
-Delegated tasks and reviews also produce a Claude Code session id (see it via `/cc:result` or
-`/cc:status`). Resume that run directly in Claude Code with:
+Delegated tasks and reviews also produce a Claude Code session id. Resume that run directly in
+Claude Code with:
 
 ```bash
 claude --resume <session-id>
@@ -280,13 +209,13 @@ claude --resume <session-id>
 ### Do I need a separate Claude account?
 
 No. This plugin uses your local Claude Code login. If you are signed into Claude Code on this
-machine, that account works immediately. If you only use Codex today, run `!claude login` (or set
-`ANTHROPIC_API_KEY`) after installing Claude Code.
+machine, that account works immediately. If you only use Codex today, run `claude login` or set
+`ANTHROPIC_API_KEY` after installing Claude Code.
 
 ### Does the plugin use a separate Claude runtime?
 
-No. It delegates through your local `claude` CLI on the same machine — same install, same auth,
-same repo checkout, same machine-local environment.
+No. It delegates through your local `claude` CLI on the same machine: same install, same auth, same
+repo checkout, same machine-local environment.
 
 ### Can I keep using my current API key or base URL setup?
 
@@ -296,8 +225,8 @@ apply.
 ## Development
 
 ```bash
-node --check plugins/cc/scripts/claude-companion.mjs   # syntax check
-node plugins/cc/scripts/claude-companion.mjs --tools   # dump tool list
+node --check plugins/cc/scripts/claude-companion.mjs    # syntax check
+node plugins/cc/scripts/claude-companion.mjs --tools    # dump tool list
 node plugins/cc/scripts/claude-companion.mjs --selftest # installed? authed?
 npm test                                                # unit + MCP smoke tests
 ```

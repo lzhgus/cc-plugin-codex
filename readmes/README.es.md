@@ -1,32 +1,43 @@
-# Claude Code Companion para Codex
+# Claude Code Companion for Codex
 
 [English](../README.md) | [简体中文](README.zh-CN.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [Español](README.es.md) | [Português](README.pt.md)
 
-Usa Claude Code desde Codex para revisar código, delegar tareas o transferir una sesión de trabajo a Claude Code.
+Usa Claude Code desde Codex para revisar código o delegar tareas a Claude Code.
 
-Este es un companion plugin no oficial. No incluye Claude Code; usa el CLI local `claude` que ya esté instalado y autenticado en tu máquina.
+Este es un companion plugin no oficial. No incluye Claude Code; usa tu CLI local `claude` y la
+autenticación de Claude Code que ya tengas configurada.
 
-## Qué incluye
+## Nota importante sobre el uso
 
-- `/cc:setup`: comprueba si Claude Code está instalado y autenticado.
-- `/cc:review`: ejecuta una revisión de Claude Code en modo solo lectura.
-- `/cc:adversarial-review`: ejecuta una revisión más crítica sobre diseño, riesgos y supuestos.
-- `/cc:rescue`, `/cc:transfer`, `/cc:status`, `/cc:result`, `/cc:cancel`: delega tareas, transfiere sesiones y administra trabajos en segundo plano.
+Los plugins de Codex se invocan con `@cc`, lenguaje natural o el selector de plugins. Este plugin
+no agrega comandos slash propios al compositor de Codex. Si al escribir un comando antiguo de estilo
+slash ves "No commands", la instalación puede estar bien. Después de instalar, abre un thread nuevo
+de Codex y usa `@cc`.
 
-También expone las herramientas MCP `cc_setup`, `cc_review`, `cc_adversarial_review`, `cc_rescue`, `cc_transfer`, `cc_status`, `cc_result` y `cc_cancel`.
+## Funciones
+
+- `@cc check setup`: comprueba si Claude Code está instalado y autenticado.
+- `@cc review my uncommitted changes`: ejecuta una revisión de solo lectura.
+- `@cc challenge this implementation against main`: ejecuta una revisión adversarial y orientada a riesgos.
+- `@cc investigate why tests are failing in the background`: delega una tarea a Claude Code.
+- `@cc status`, `@cc result`, `@cc cancel`: gestiona trabajos en segundo plano.
+- `@cc transfer this Codex session to Claude Code`: crea un comando de resume para Claude Code.
+
+Las herramientas MCP internas son `cc_setup`, `cc_review`, `cc_adversarial_review`, `cc_rescue`,
+`cc_transfer`, `cc_status`, `cc_result` y `cc_cancel`.
 
 ## Requisitos
 
-- Suscripción a Claude Code (Pro/Max, etc.) o una Anthropic API key.
+- Suscripción Claude Code Pro/Max o una Anthropic API key.
 - Node.js 18.18 o posterior.
 - Codex CLI con soporte para plugins.
-- Claude Code CLI instalado y autenticado. El comando `claude` debe funcionar en la terminal.
+- Claude Code CLI instalado y autenticado como `claude`.
 
 ## Instalación
 
 ### 1. Instalar Claude Code
 
-Este plugin depende del CLI local `claude`. El quickstart oficial de Claude Code recomienda native install:
+El quickstart oficial recomienda la instalación nativa:
 
 ```bash
 curl -fsSL https://claude.ai/install.sh | bash
@@ -44,20 +55,21 @@ Windows CMD:
 curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd
 ```
 
-También puedes usar gestores de paquetes:
+Alternativas con gestores de paquetes:
 
 ```bash
 brew install --cask claude-code
 winget install Anthropic.ClaudeCode
 ```
 
-Después inicia sesión:
+Luego inicia sesión:
 
 ```bash
 claude
 ```
 
-Sigue el flujo de autenticación en el navegador. También puedes volver a autenticarte dentro de Claude Code con `/login`.
+Sigue el flujo de login en el navegador. También puedes volver a autenticarte dentro de Claude Code
+con `/login`.
 
 ### 2. Instalar este plugin de Codex
 
@@ -73,15 +85,21 @@ Instala el plugin:
 codex plugin add cc@cc-plugin-codex
 ```
 
-Luego ejecuta en Codex:
+Después de instalar, abre un thread nuevo de Codex y pide:
 
 ```text
-/cc:setup
+@cc check whether Claude Code is installed and authenticated
 ```
 
-Después de instalar, `codex mcp list` debería mostrar el MCP server `claude-code`, y Codex debería tener disponibles las herramientas `cc_*`.
+También puedes comprobar el MCP server:
 
-Para desarrollo local desde un checkout:
+```bash
+codex mcp list
+```
+
+Deberías ver el MCP server `claude-code` y las herramientas `cc_*`.
+
+Para desarrollo local desde este repositorio:
 
 ```bash
 codex plugin marketplace add .
@@ -90,44 +108,48 @@ codex plugin add cc@cc-plugin-codex
 
 ## Claude Code CI/CD
 
-Este plugin solo necesita el Claude Code CLI local. Aun así, Claude Code también ofrece integraciones oficiales de CI/CD. Para configurar GitHub Actions rápidamente, abre Claude Code y ejecuta:
+Este plugin solo necesita el Claude Code CLI local, pero Claude Code también tiene integraciones
+oficiales de CI/CD. Para GitHub Actions, abre Claude Code y ejecuta:
 
 ```text
 /install-github-app
 ```
 
-El flujo oficial instala la Claude GitHub App y guía a los administradores del repositorio para agregar workflows de GitHub Actions y un secreto con la API key.
-
-Referencias:
+La configuración oficial instala la Claude GitHub App y guía a los administradores para agregar
+workflows de GitHub Actions y un secret con la API key. Referencias:
 
 - https://code.claude.com/docs/en/quickstart
 - https://code.claude.com/docs/en/github-actions
 
-## Uso habitual
+## Uso
 
-```bash
-/cc:review
-/cc:review --background
-/cc:adversarial-review --base main challenge the caching and retry design
-/cc:rescue investigate why the tests started failing
-/cc:status
-/cc:result
+```text
+@cc check setup
+@cc review my uncommitted changes
+@cc review my branch against main
+@cc challenge whether this caching and retry design is safe
+@cc investigate why the tests started failing
+@cc run a background rescue for the CI regression
+@cc status
+@cc result
+@cc cancel the latest running job
+@cc transfer this Codex session to Claude Code
 ```
 
-## Cómo funciona
+Las revisiones son de solo lectura. Las tareas rescue se delegan a Claude Code y pueden modificar
+archivos. Los trabajos en segundo plano devuelven un task id; usa `@cc status` y `@cc result` para
+ver el progreso y el resultado.
 
-El plugin ejecuta el Claude Code CLI local en modo headless, por ejemplo `claude -p ...`. Por eso usa la misma instalación, autenticación, configuración y copia del repositorio que ya usas en la máquina.
-
-## Desarrollo y verificación
+## Desarrollo
 
 ```bash
-npm test
-npm run check
+node --check plugins/cc/scripts/claude-companion.mjs
 node plugins/cc/scripts/claude-companion.mjs --tools
 node plugins/cc/scripts/claude-companion.mjs --selftest
+npm test
 ```
 
-Las pruebas usan un fake Claude fixture, así que no llaman al Claude Code real.
+Las pruebas usan un fixture `fake-claude`, así que no llaman al `claude` real.
 
 ## License
 

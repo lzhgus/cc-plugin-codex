@@ -25,7 +25,7 @@ Things to avoid when composing a `cc_rescue` task or review focus.
 ## Ignoring background for long work
 
 ❌ Blocking on `cc_rescue` for a 10-minute investigation.
-✅ `background: true`, then `/cc:status` and `/cc:result`.
+✅ `background: true`, then `@cc status` and `@cc result`.
 
 ## Inventing output
 
